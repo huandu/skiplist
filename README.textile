@@ -1,7 +1,4 @@
-skiplist
-===========
-
-A golang Skip List Implementation.
+h1. A golang Skip List Implementation.
 
 Use <code>go doc</code> to see more docs.
 
