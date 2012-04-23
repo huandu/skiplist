@@ -5,3 +5,5 @@ Use <code>go doc</code> to see more docs.
 <pre>
 go doc github.com/huandu/skiplist
 </pre>
+
+*TODO* Performance is not tuned now.
