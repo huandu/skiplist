@@ -1,13 +1,39 @@
 h1. A golang Skip List Implementation.
 
-This is a typical skip list implementation using go. It can store any value.
+This is a typical skip list implementation using go. It is a kind of ordered set and can store any value inside.
+
+See "Skip List":http://en.wikipedia.org/wiki/Skip_list wikipedia page for more information about this data structure.
 
 h2. How To Use
 
-Get souce code using go command.
+Here is a quick tutorial to show how easy to use it.
 
 <pre>
-go get -u github.com/huandu/skiplist
+import "github.com/huandu/skiplist"
+
+func main() {
+    // create a list with int key
+    list := skiplist.New(skiplist.Int)
+
+    // add some values
+    list.Set(12, "hello world")
+    list.Set(34, 56)
+
+    // get element
+    elem := list.Get(34) // value is stored in elem.Value
+    next := elem.Next()  // get next element
+
+    // or get value directly
+    val, ok := list.GetValue(34)
+
+    // remove an element
+    list.Remove(34)
+}
+
 </pre>
 
 Use <code>go doc</code> to see usage and more docs.
+
+<pre>
+go doc github.com/huandu/skiplist
+</pre>
