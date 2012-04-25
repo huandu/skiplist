@@ -1,9 +1,13 @@
 h1. A golang Skip List Implementation.
 
-Use <code>go doc</code> to see more docs.
+This is a typical skip list implementation using go. It can store any value.
+
+h2. How To Use
+
+Get souce code using go command.
 
 <pre>
-go doc github.com/huandu/skiplist
+go get -u github.com/huandu/skiplist
 </pre>
 
-*TODO* Performance is not tuned now.
+Use <code>go doc</code> to see usage and more docs.

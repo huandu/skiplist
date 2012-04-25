@@ -12,7 +12,8 @@ for i in $SIMPLE_TYPES; do
     `ucfirst $i` GreaterThanFunc = func (lhs, rhs interface{}) bool {
         return lhs.($i) > rhs.($i)
     }
-    `ucfirst $i`Reversed GreaterThanFunc = func (lhs, rhs interface{}) bool {
+    `ucfirst $i`Ascending = `ucfirst $i`
+    `ucfirst $i`Descending LessThanFunc = func (lhs, rhs interface{}) bool {
         return lhs.($i) < rhs.($i)
     }
 
@@ -25,8 +26,9 @@ cat <<EOF
     Bytes GreaterThanFunc = func (lhs, rhs interface{}) bool {
         return bytes.Compare(lhs.([]byte), rhs.([]byte)) > 0
     }
+    BytesAscending = Bytes
     // the type []byte. reversed order.
-    BytesReversed GreaterThanFunc = func (lhs, rhs interface{}) bool {
+    BytesDescending LessThanFunc = func (lhs, rhs interface{}) bool {
         return bytes.Compare(lhs.([]byte), rhs.([]byte)) < 0
     }
 EOF
