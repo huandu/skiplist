@@ -13,6 +13,8 @@ import "github.com/huandu/skiplist"
 
 func main() {
     // create a list with int key
+    // most built-in sortable type is supported
+    // see "go doc" for more details
     list := skiplist.New(skiplist.Int)
 
     // add some values
@@ -23,13 +25,12 @@ func main() {
     elem := list.Get(34) // value is stored in elem.Value
     next := elem.Next()  // get next element
 
-    // or get value directly
+    // or get value directly just like using a map
     val, ok := list.GetValue(34)
 
     // remove an element
     list.Remove(34)
 }
-
 </pre>
 
 Use <code>go doc</code> to see usage and more docs.
