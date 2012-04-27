@@ -317,7 +317,17 @@ func getScore(key interface{}, reversed bool) (score float64) {
         score = float64(t)
 
     case string:
-        score = 0
+        // use first 2 runes in string as score
+        var runes uint64
+        length := len(t)
+
+        if length == 1 {
+            runes = uint64(t[0]) << 16
+        } else if length >= 2 {
+            runes = uint64(t[0])<<16 + uint64(t[1])
+        }
+
+        score = float64(runes)
 
     case uint:
         score = float64(t)
