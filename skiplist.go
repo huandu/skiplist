@@ -19,10 +19,11 @@
 //     list.Set(40, 1000)         // replace last element with new value
 //     
 //     // try to find one
-//     e := list.Get(10)          // value is the Element with key 10
-//     _ = e.Value.(string)       // it's the "World". remember to do type cast
-//     v, ok := list.GetValue(20) // directly get value. ok is false if not exists
-//     notFound := list.Get(15)   // returns nil if key is not found
+//     e := list.Get(10)           // value is the Element with key 10
+//     _ = e.Value.(string)        // it's the "World". remember to do type cast
+//     v, ok := list.GetValue(20)  // directly get value. ok is false if not exists
+//     v2 := list.MustGetValue(10) // directly get value. panic if key doesn't exist
+//     notFound := list.Get(15)    // returns nil if key is not found
 //     
 //     // remove element
 //     old := list.Remove(40)     // remove found element and returns its pointer
@@ -205,6 +206,18 @@ func (list *SkipList) GetValue(key interface{}) (interface{}, bool) {
     }
 
     return element.Value, true
+}
+
+// Gets a value. It will panic if key doesn't exist.
+// Returns value.
+func (list *SkipList) MustGetValue(key interface{}) interface{} {
+    element := list.Get(key)
+
+    if element == nil {
+        panic("cannot find key in skiplist")
+    }
+
+    return element.Value
 }
 
 // Removes an element.
