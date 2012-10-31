@@ -1,8 +1,8 @@
 h1. A golang Skip List Implementation.
 
-This is a typical skip list implementation using go. It is a kind of ordered set and can store any value inside.
+This is a typical skip list implementation using go. It is a kind of ordered map and can store any value inside.
 
-See "Skip List":http://en.wikipedia.org/wiki/Skip_list wikipedia page for more information about this data structure.
+See "Skip List":http://en.wikipedia.org/wiki/Skip_list wikipedia page to learn more about this data structure.
 
 h2. How To Use
 

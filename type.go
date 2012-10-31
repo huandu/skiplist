@@ -7,11 +7,17 @@
 
 package skiplist
 
+import (
+    "math/rand"
+)
+
 // Return true if lhs greater than rhs
 type GreaterThanFunc func(lhs, rhs interface{}) bool
 
 // Return true if lhs less than rhs
 type LessThanFunc GreaterThanFunc
+
+type defaultRandSource struct{}
 
 type Comparable interface {
     Descending() bool
@@ -30,10 +36,11 @@ type Element struct {
 
 type SkipList struct {
     elementNode
-    level    int
-    length   int
-    keyFunc  Comparable
-    reversed bool
+    level      int
+    length     int
+    keyFunc    Comparable
+    randSource rand.Source
+    reversed   bool
 
     prevNodesCache []*elementNode // a cache for Set/Remove
 }
@@ -48,6 +55,14 @@ type SkipList struct {
 // - If Compare(k1, k2) is false and k1 doesn't equal to k2, k1.Score() < k2.Score() must be true.
 type Scorable interface {
     Score() float64
+}
+
+func (r defaultRandSource) Int63() int64 {
+    return rand.Int63()
+}
+
+func (r defaultRandSource) Seed(seed int64) {
+    rand.Seed(seed)
 }
 
 func (f GreaterThanFunc) Descending() bool {

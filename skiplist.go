@@ -48,7 +48,7 @@
 // Pre-defined compare function name is similar to the type name, e.g.
 // skiplist.Float32 is for float32 key. A special case is skiplist.Bytes is for []byte.
 // These functions order key from small to big (say "ascending order").
-// There are also reserved order functions with name like skiplist.IntDescending.
+// There are also reserved order functions with name like skiplist.IntDesc.
 //
 // For key types out of the pre-defined list, one can write a custom compare function.
 //     type GreaterThanFunc func (lhs, rhs interface{}) bool
@@ -70,15 +70,20 @@
 //         return float64(f.value)
 //     }
 //
-//     list := skiplist.New(func(lhs, rhs interface{}) {
+//     var greater skiplist.GreaterThanFunc = func(lhs, rhs interface{}) {
 //         return lhs.(Foo).value > rhs.(Foo).value
-//     })
+//     }
+//     list := skiplist.New(greater)
 //     
-//     // descending version is a bit different. mind the type cast.
-//     var compare LessThanFunc = func(lhs, rhs interface{}) {
+//     // descending version is a bit different. mind the func type.
+//     var less skiplist.LessThanFunc = func(lhs, rhs interface{}) {
 //         return lhs.(Foo).value < rhs.(Foo).value
 //     })
-//     list := skiplist.New(compare)
+//     list := skiplist.New(less)
+//
+// Skiplist uses global rand source in math/rand by default. This rand source acquires a
+// lock when generating random number. Replacing it with a lock-free rand source can provide
+// slightly better performance. Use SkipList.SetRandSource to change rand source.
 package skiplist
 
 import (
@@ -90,8 +95,8 @@ import (
 // If k1 equals k2, keyFunc(k1, k2) and keyFunc(k2, k1) must both be false.
 // For built-in types, keyFunc can be found in skiplist package.
 // For instance, skiplist.Int is for the list with int keys.
-// By default, the list with built-in type key is in ascend order.
-// The keyFunc named as skiplist.IntDescending is for descend key order list.
+// By default, the list with built-in type key is in ascending order.
+// The keyFunc named as skiplist.IntDesc is for descending key order list.
 func New(keyFunc Comparable) *SkipList {
     if DefaultMaxLevel <= 0 {
         panic("skiplist default level must not be zero or negative")
@@ -102,6 +107,7 @@ func New(keyFunc Comparable) *SkipList {
         prevNodesCache: make([]*elementNode, DefaultMaxLevel),
         level:          DefaultMaxLevel,
         keyFunc:        keyFunc,
+        randSource:     defaultSource,
         reversed:       keyFunc.Descending(),
     }
 }
@@ -111,6 +117,15 @@ func (list *SkipList) Init() *SkipList {
     list.next = make([]*Element, list.level)
     list.length = 0
     return list
+}
+
+// Sets a new rand source.
+//
+// Skiplist uses global rand defined in math/rand by default.
+// The default rand acquires a global mutex before generating any number.
+// It's not necessary if the skiplist is well protected by caller.
+func (list *SkipList) SetRandSource(source rand.Source) {
+    list.randSource = source
 }
 
 // Gets the first element.
@@ -140,7 +155,7 @@ func (list *SkipList) Set(key, value interface{}) *Element {
 
     element = &Element{
         elementNode: elementNode{
-            next: make([]*Element, randLevel(list.level)),
+            next: make([]*Element, list.randLevel()),
         },
         key:   key,
         score: score,
@@ -264,15 +279,15 @@ func (list *SkipList) SetMaxLevel(level int) (old int) {
     return
 }
 
-func randLevel(level int) int {
+func (list *SkipList) randLevel() int {
     l := 1
 
-    for (rand.Int31() & 0xFFFF) < PROPABILITY {
+    for ((list.randSource.Int63() >> 32) & 0xFFFF) < PROPABILITY {
         l++
     }
 
-    if l > level {
-        l = level
+    if l > list.level {
+        l = list.level
     }
 
     return l
@@ -281,18 +296,23 @@ func randLevel(level int) int {
 func getScore(key interface{}, reversed bool) (score float64) {
     switch t := key.(type) {
     case []byte:
+        data := []byte(t)
+        l := len(data)
+
         // only use first 8 bytes
-        if len(t) > 8 {
-            t = t[:8]
+        if l > 7 {
+            data = data[:7]
+            l = 7
         }
 
         var result uint64
 
-        for _, v := range t {
-            result |= uint64(v)
-            result = result << 8
+        for i := 0; i < l; i++ {
+            result |= uint64(data[i])
+            result <<= 8
         }
 
+        result <<= uint(7-l) * 8
         score = float64(result)
 
     case float32:
@@ -317,7 +337,24 @@ func getScore(key interface{}, reversed bool) (score float64) {
         score = float64(t)
 
     case string:
-        score = 0
+        data := []byte(t)
+        l := len(data)
+
+        // only use first 8 bytes
+        if l > 7 {
+            data = data[:7]
+            l = 7
+        }
+
+        var result uint64
+
+        for i := 0; i < l; i++ {
+            result |= uint64(data[i])
+            result <<= 8
+        }
+
+        result <<= uint(7-l) * 8
+        score = float64(result)
 
     case uint:
         score = float64(t)

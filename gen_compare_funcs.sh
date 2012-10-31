@@ -8,14 +8,17 @@ function ucfirst() {
 
 # print simple types
 for i in $SIMPLE_TYPES; do
+    VAR_NAME=`ucfirst $i`
     cat <<EOF
-    `ucfirst $i` GreaterThanFunc = func (lhs, rhs interface{}) bool {
+    ${VAR_NAME} GreaterThanFunc = func (lhs, rhs interface{}) bool {
         return lhs.($i) > rhs.($i)
     }
-    `ucfirst $i`Ascending = `ucfirst $i`
-    `ucfirst $i`Descending LessThanFunc = func (lhs, rhs interface{}) bool {
+    ${VAR_NAME}Ascending = ${VAR_NAME}
+    ${VAR_NAME}Asc = ${VAR_NAME}
+    ${VAR_NAME}Descending LessThanFunc = func (lhs, rhs interface{}) bool {
         return lhs.($i) < rhs.($i)
     }
+    ${VAR_NAME}Desc LessThanFunc = ${VAR_NAME}Descending
 
 EOF
 done
@@ -27,8 +30,10 @@ cat <<EOF
         return bytes.Compare(lhs.([]byte), rhs.([]byte)) > 0
     }
     BytesAscending = Bytes
+    BytesAsc = Bytes
     // the type []byte. reversed order.
     BytesDescending LessThanFunc = func (lhs, rhs interface{}) bool {
         return bytes.Compare(lhs.([]byte), rhs.([]byte)) < 0
     }
+    BytesDesc LessThanFunc = BytesDescending
 EOF

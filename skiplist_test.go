@@ -9,7 +9,9 @@ package skiplist
 
 import (
     "math/rand"
+    "runtime"
     "testing"
+    "time"
 )
 
 func checkSanity(list *SkipList, t *testing.T) {
@@ -30,15 +32,15 @@ func checkSanity(list *SkipList, t *testing.T) {
 
         for next.next[k] != nil {
             if !list.keyFunc.Compare(next.next[k].key, next.key) {
-                t.Fatal("next key value must be greater than prev key value")
+                t.Fatalf("next key value must be greater than prev key value. [next:%v] [prev:%v]", next.next[k].key, next.key)
             }
 
             if next.score > next.next[k].score {
-                t.Fatal("next key score must be no less than prev key score", next.next[k].score, next.score)
+                t.Fatalf("next key score must be no less than prev key score. [next:%v] [prev:%v]", next.next[k].score, next.score)
             }
 
             if k > len(next.next) {
-                t.Fatal("node's level must be no less than current level")
+                t.Fatalf("node's level must be no less than current level. [cur:%v] [node:%v]", k, next.next)
             }
 
             //t.Log("TEST VALUE", next.key, next.score, next.Value)
@@ -48,7 +50,7 @@ func checkSanity(list *SkipList, t *testing.T) {
 
         if k == 0 {
             if cnt != list.Len() {
-                t.Fatal("list len must match the level 0 nodes count", cnt, list.Len())
+                t.Fatalf("list len must match the level 0 nodes count. [cur:%v] [level0:%v]", cnt, list.Len())
             }
         }
     }
@@ -58,7 +60,7 @@ func testBasicIntCRUD(t *testing.T, reversed bool) {
     var list *SkipList
 
     if reversed {
-        list = New(IntDescending)
+        list = New(IntDesc)
     } else {
         list = New(Int)
     }
@@ -116,7 +118,7 @@ func TestBasicIntCRUDNormal(t *testing.T) {
     testBasicIntCRUD(t, false)
 }
 
-func TestBasicIntCRUDDescending(t *testing.T) {
+func TestBasicIntCRUDDesc(t *testing.T) {
     testBasicIntCRUD(t, true)
 }
 
@@ -124,7 +126,7 @@ func testBasicStringCRUD(t *testing.T, reversed bool) {
     var list *SkipList
 
     if reversed {
-        list = New(StringDescending)
+        list = New(StringDesc)
     } else {
         list = New(String)
     }
@@ -154,27 +156,27 @@ func testBasicStringCRUD(t *testing.T, reversed bool) {
     v6, ok6 := list.GetValue("not-exist")
 
     if v1 == nil || v1.Value.(int) != 1 || v1.Key().(string) != "A" {
-        t.Fatal(`wrong "A" value`)
+        t.Fatal(`wrong "A" value`, v1)
     }
 
     if v2 == nil || v2.(int) != 2 || !ok2 {
-        t.Fatal(`wrong "golang" value`)
+        t.Fatal(`wrong "golang" value`, v2)
     }
 
     if v3 == nil || v3.(int) != 3 || !ok3 {
-        t.Fatal(`wrong "Skip" value`)
+        t.Fatal(`wrong "Skip" value`, v3)
     }
 
     if v4 != nil || ok4 {
-        t.Fatal(`wrong "List" value`)
+        t.Fatal(`wrong "List" value`, v4)
     }
 
     if v5 == nil || v5.(int) != 5 || !ok5 {
-        t.Fatal(`wrong "Implementation" value`)
+        t.Fatal(`wrong "Implementation" value`, v5)
     }
 
     if v6 != nil || ok6 {
-        t.Fatal(`wrong "not-exist" value`)
+        t.Fatal(`wrong "not-exist" value`, v6)
     }
 }
 
@@ -182,13 +184,13 @@ func TestBasicStringCRUDNormal(t *testing.T) {
     testBasicStringCRUD(t, false)
 }
 
-func TestBasicStringCRUDDescending(t *testing.T) {
+func TestBasicStringCRUDDesc(t *testing.T) {
     testBasicStringCRUD(t, true)
 }
 
 func TestChangeLevel(t *testing.T) {
     DefaultMaxLevel = 10
-    list := New(IntDescending)
+    list := New(IntDesc)
 
     if list.MaxLevel() != 10 {
         t.Fatal("max level must equal default max value")
@@ -223,29 +225,68 @@ func TestChangeLevel(t *testing.T) {
     DefaultMaxLevel = 32
 }
 
-func BenchmarkWorstInserts(b *testing.B) {
+func BenchmarkDefaultWorstInserts(b *testing.B) {
     b.StopTimer()
+    runtime.GC()
     list := New(Int)
     b.StartTimer()
 
     for i := 0; i < b.N; i++ {
         list.Set(i, i)
     }
+
+    list = nil
 }
 
-func BenchmarkBestInserts(b *testing.B) {
+func BenchmarkDefaultBestInserts(b *testing.B) {
     b.StopTimer()
-    list := New(IntDescending)
+    runtime.GC()
+    list := New(IntDesc)
     b.StartTimer()
 
     for i := 0; i < b.N; i++ {
         list.Set(i, i)
     }
+
+    list = nil
+}
+
+func BenchmarkWorstInsertsWithLocalRandSource(b *testing.B) {
+    b.StopTimer()
+    runtime.GC()
+    list := New(Int)
+    source := rand.NewSource(time.Now().UnixNano())
+    list.SetRandSource(source)
+
+    b.StartTimer()
+
+    for i := 0; i < b.N; i++ {
+        list.Set(i, i)
+    }
+
+    list = nil
+}
+
+func BenchmarkBestInsertsWithLocalRandSource(b *testing.B) {
+    b.StopTimer()
+    runtime.GC()
+    list := New(IntDesc)
+    source := rand.NewSource(time.Now().UnixNano())
+    list.SetRandSource(source)
+
+    b.StartTimer()
+
+    for i := 0; i < b.N; i++ {
+        list.Set(i, i)
+    }
+
+    list = nil
 }
 
 func BenchmarkRandomSelect(b *testing.B) {
     b.StopTimer()
-    list := New(IntDescending)
+    runtime.GC()
+    list := New(IntDesc)
 
     for i := 0; i < b.N; i++ {
         list.Set(i, i)
@@ -261,4 +302,6 @@ func BenchmarkRandomSelect(b *testing.B) {
     for k := range keys {
         list.Get(k)
     }
+
+    list = nil
 }
