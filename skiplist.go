@@ -309,23 +309,19 @@ func (list *SkipList) randLevel() int {
 func getScore(key interface{}, reversed bool) (score float64) {
     switch t := key.(type) {
     case []byte:
+        var result uint64
         data := []byte(t)
         l := len(data)
 
         // only use first 8 bytes
-        if l > 7 {
-            data = data[:7]
-            l = 7
+        if l > 8 {
+            l = 8
         }
-
-        var result uint64
 
         for i := 0; i < l; i++ {
-            result |= uint64(data[i])
-            result <<= 8
+            result |= uint64(data[i]) << uint(8 * (7 - i))
         }
 
-        result <<= uint(7-l) * 8
         score = float64(result)
 
     case float32:
@@ -350,23 +346,19 @@ func getScore(key interface{}, reversed bool) (score float64) {
         score = float64(t)
 
     case string:
+        var result uint64
         data := []byte(t)
         l := len(data)
 
         // only use first 8 bytes
-        if l > 7 {
-            data = data[:7]
-            l = 7
+        if l > 8 {
+            l = 8
         }
-
-        var result uint64
 
         for i := 0; i < l; i++ {
-            result |= uint64(data[i])
-            result <<= 8
+            result |= uint64(data[i]) << uint(8 * (7 - i))
         }
 
-        result <<= uint(7-l) * 8
         score = float64(result)
 
     case uint:
