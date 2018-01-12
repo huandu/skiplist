@@ -299,7 +299,7 @@ func BenchmarkRandomSelect(b *testing.B) {
 	}
 
 	b.StartTimer()
-	for k := range keys {
+	for _, k := range keys {
 		list.Get(k)
 	}
 
