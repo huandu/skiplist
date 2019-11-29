@@ -7,12 +7,12 @@
 
 package skiplist
 
-// Gets the ajancent next element.
+// Next returns the ajancent next element.
 func (element *Element) Next() *Element {
 	return element.next[0]
 }
 
-// Gets next element at a specific level.
+// NextLevel returns next element at a specific level.
 func (element *Element) NextLevel(level int) *Element {
 	if level >= len(element.next) || level < 0 {
 		panic("invalid argument to NextLevel")
@@ -21,7 +21,7 @@ func (element *Element) NextLevel(level int) *Element {
 	return element.next[level]
 }
 
-// Gets key.
+// Key returns the key of element.
 func (element *Element) Key() interface{} {
 	return element.key
 }

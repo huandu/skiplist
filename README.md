@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/huandu/skiplist.svg?branch=master)](https://travis-ci.org/huandu/skiplist)
 [![GoDoc](https://godoc.org/github.com/huandu/skiplist?status.svg)](https://godoc.org/github.com/huandu/skiplist)
+[![Go Report](https://goreportcard.com/badge/github.com/huandu/skiplist)](https://goreportcard.com/report/github.com/huandu/skiplist)
 
 Skip list is a kind of ordered map and can store any value inside. See [skip list](http://en.wikipedia.org/wiki/Skip_list) wikipedia page to learn more about this data structure.
 
@@ -34,6 +35,7 @@ func main() {
     // Add some values. Value can be anything.
     list.Set(12, "hello world")
     list.Set(34, 56)
+    list.Set(78, 90.12)
 
     // Get element by index.
     elem := list.Get(34) // Value is stored in elem.Value.

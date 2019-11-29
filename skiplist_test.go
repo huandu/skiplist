@@ -8,13 +8,14 @@
 package skiplist
 
 import (
+	"fmt"
 	"math/rand"
 	"runtime"
 	"testing"
 	"time"
 )
 
-func checkSanity(list *SkipList, t *testing.T) {
+func checkSanity(t *testing.T, list *SkipList) {
 	// each level must be correctly ordered
 	for k, v := range list.next {
 		//t.Log("Level", k)
@@ -71,16 +72,16 @@ func testBasicIntCRUD(t *testing.T, reversed bool) {
 	list.Set(20, 4)
 	list.Set(90, 5)
 	t.Log("inserted")
-	checkSanity(list, t)
+	checkSanity(t, list)
 
 	list.Set(30, 9)
 	t.Log("inserted duplicates")
-	checkSanity(list, t)
+	checkSanity(t, list)
 
 	list.Remove(0)
 	list.Remove(20)
 	t.Log("removed")
-	checkSanity(list, t)
+	checkSanity(t, list)
 
 	v1 := list.Get(10)
 	v2, ok2 := list.GetValue(60)
@@ -137,16 +138,16 @@ func testBasicStringCRUD(t *testing.T, reversed bool) {
 	list.Set("List", 4)
 	list.Set("Implementation", 5)
 	t.Log("inserted")
-	checkSanity(list, t)
+	checkSanity(t, list)
 
 	list.Set("List", 9)
 	t.Log("inserted duplicates")
-	checkSanity(list, t)
+	checkSanity(t, list)
 
 	list.Remove("a")
 	list.Remove("List")
 	t.Log("removed")
-	checkSanity(list, t)
+	checkSanity(t, list)
 
 	v1 := list.Get("A")
 	v2, ok2 := list.GetValue("golang")
@@ -200,17 +201,17 @@ func TestChangeLevel(t *testing.T) {
 		list.Set(i, i*10)
 	}
 
-	checkSanity(list, t)
+	checkSanity(t, list)
 
 	list.SetMaxLevel(20)
-	checkSanity(list, t)
+	checkSanity(t, list)
 
 	for i := 1; i <= 201; i += 4 {
 		list.Set(i, i*10)
 	}
 
 	list.SetMaxLevel(4)
-	checkSanity(list, t)
+	checkSanity(t, list)
 
 	if list.Len() != 102 {
 		t.Fatal("wrong list element number", list.Len())
@@ -304,4 +305,32 @@ func BenchmarkRandomSelect(b *testing.B) {
 	}
 
 	list = nil
+}
+
+func ExampleSkipList() {
+	// Create a skip list with int key.
+	list := New(Int)
+
+	// Add some values. Value can be anything.
+	list.Set(12, "hello world")
+	list.Set(34, 56)
+	list.Set(78, 90.12)
+
+	// Get element by index.
+	elem := list.Get(34) // Value is stored in elem.Value.
+	fmt.Println(elem.Value)
+	next := elem.Next() // Get next element.
+	fmt.Println(next.Value)
+
+	// Or get value directly just like a map
+	val, ok := list.GetValue(34)
+	fmt.Println(val, ok)
+
+	// Remove an element by index.
+	list.Remove(34)
+
+	// Output:
+	// 56
+	// 90.12
+	// 56 true
 }

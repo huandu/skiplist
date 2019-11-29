@@ -92,7 +92,7 @@ import (
 	"math/rand"
 )
 
-// Creates a new skiplist.
+// New creates a new skiplist.
 // keyFunc is a func checking the "greater than" logic.
 // If k1 equals k2, keyFunc(k1, k2) and keyFunc(k2, k1) must both be false.
 // For built-in types, keyFunc can be found in skiplist package.
@@ -114,14 +114,14 @@ func New(keyFunc Comparable) *SkipList {
 	}
 }
 
-// Resets a skiplist and discards all exists elements.
+// Init resets a skiplist and discards all exists elements.
 func (list *SkipList) Init() *SkipList {
 	list.next = make([]*Element, list.level)
 	list.length = 0
 	return list
 }
 
-// Sets a new rand source.
+// SetRandSource sets a new rand source.
 //
 // Skiplist uses global rand defined in math/rand by default.
 // The default rand acquires a global mutex before generating any number.
@@ -130,17 +130,17 @@ func (list *SkipList) SetRandSource(source rand.Source) {
 	list.randSource = source
 }
 
-// Gets the first element.
+// Front returns the first element.
 func (list *SkipList) Front() *Element {
 	return list.next[0]
 }
 
-// Gets list length.
+// Len returns list length.
 func (list *SkipList) Len() int {
 	return list.length
 }
 
-// Sets a value in the list with key.
+// Set sets a value in the list with key.
 // If the key exists, change element value to the new one.
 // Returns new element pointer.
 func (list *SkipList) Set(key, value interface{}) *Element {
@@ -173,10 +173,10 @@ func (list *SkipList) Set(key, value interface{}) *Element {
 	return element
 }
 
-// Gets an element.
+// Get returns an element.
 // Returns element pointer if found, nil if not found.
 func (list *SkipList) Get(key interface{}) *Element {
-	var prev *elementNode = &list.elementNode
+	prev := &list.elementNode
 	var next *Element
 	score := getScore(key, list.reversed)
 
@@ -197,7 +197,7 @@ func (list *SkipList) Get(key interface{}) *Element {
 	return nil
 }
 
-// Gets a value. It's a short hand for Get().Value.
+// GetValue returns a value. It's a short hand for Get().Value.
 // Returns value and its existence status.
 func (list *SkipList) GetValue(key interface{}) (interface{}, bool) {
 	element := list.Get(key)
@@ -209,7 +209,7 @@ func (list *SkipList) GetValue(key interface{}) (interface{}, bool) {
 	return element.Value, true
 }
 
-// Gets a value. It will panic if key doesn't exist.
+// MustGetValue returns a value. It will panic if key doesn't exist.
 // Returns value.
 func (list *SkipList) MustGetValue(key interface{}) interface{} {
 	element := list.Get(key)
@@ -221,7 +221,7 @@ func (list *SkipList) MustGetValue(key interface{}) interface{} {
 	return element.Value
 }
 
-// Removes an element.
+// Remove removes an element.
 // Returns removed element pointer if found, nil if not found.
 func (list *SkipList) Remove(key interface{}) *Element {
 	score := getScore(key, list.reversed)
@@ -241,7 +241,7 @@ func (list *SkipList) Remove(key interface{}) *Element {
 }
 
 func (list *SkipList) getPrevElementNodes(key interface{}, score float64) []*elementNode {
-	var prev *elementNode = &list.elementNode
+	prev := &list.elementNode
 	var next *Element
 
 	prevs := list.prevNodesCache
@@ -261,12 +261,12 @@ func (list *SkipList) getPrevElementNodes(key interface{}, score float64) []*ele
 	return prevs
 }
 
-// Gets current max level value.
+// MaxLevel returns current max level value.
 func (list *SkipList) MaxLevel() int {
 	return list.level
 }
 
-// Changes skip list max level.
+// SetMaxLevel changes skip list max level.
 // If level is not greater than 0, just panic.
 func (list *SkipList) SetMaxLevel(level int) (old int) {
 	if level <= 0 {
@@ -296,7 +296,7 @@ func (list *SkipList) SetMaxLevel(level int) (old int) {
 func (list *SkipList) randLevel() int {
 	l := 1
 
-	for ((list.randSource.Int63() >> 32) & 0xFFFF) < PROPABILITY {
+	for ((list.randSource.Int63() >> 32) & 0xFFFF) < Propability {
 		l++
 	}
 

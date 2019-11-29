@@ -12,12 +12,17 @@ package skiplist
 
 import "bytes"
 
-const PROPABILITY = 0x3FFF
+// Propability is the propability to create a new skiplist level.
+const Propability = 0x3FFF
 
 var (
-	DefaultMaxLevel int = 32
-	defaultSource       = defaultRandSource{}
+	// DefaultMaxLevel is the default max level of a skiplist.
+	DefaultMaxLevel = 32
+	defaultSource   = defaultRandSource{}
+)
 
+// All built-in comparasion functions.
+var (
 	Byte GreaterThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(byte) > rhs.(byte)
 	}
@@ -26,7 +31,7 @@ var (
 	ByteDescending LessThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(byte) < rhs.(byte)
 	}
-	ByteDesc LessThanFunc = ByteDescending
+	ByteDesc = ByteDescending
 
 	Float32 GreaterThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(float32) > rhs.(float32)
@@ -36,7 +41,7 @@ var (
 	Float32Descending LessThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(float32) < rhs.(float32)
 	}
-	Float32Desc LessThanFunc = Float32Descending
+	Float32Desc = Float32Descending
 
 	Float64 GreaterThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(float64) > rhs.(float64)
@@ -46,7 +51,7 @@ var (
 	Float64Descending LessThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(float64) < rhs.(float64)
 	}
-	Float64Desc LessThanFunc = Float64Descending
+	Float64Desc = Float64Descending
 
 	Int GreaterThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(int) > rhs.(int)
@@ -56,7 +61,7 @@ var (
 	IntDescending LessThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(int) < rhs.(int)
 	}
-	IntDesc LessThanFunc = IntDescending
+	IntDesc = IntDescending
 
 	Int16 GreaterThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(int16) > rhs.(int16)
@@ -66,7 +71,7 @@ var (
 	Int16Descending LessThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(int16) < rhs.(int16)
 	}
-	Int16Desc LessThanFunc = Int16Descending
+	Int16Desc = Int16Descending
 
 	Int32 GreaterThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(int32) > rhs.(int32)
@@ -76,7 +81,7 @@ var (
 	Int32Descending LessThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(int32) < rhs.(int32)
 	}
-	Int32Desc LessThanFunc = Int32Descending
+	Int32Desc = Int32Descending
 
 	Int64 GreaterThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(int64) > rhs.(int64)
@@ -86,7 +91,7 @@ var (
 	Int64Descending LessThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(int64) < rhs.(int64)
 	}
-	Int64Desc LessThanFunc = Int64Descending
+	Int64Desc = Int64Descending
 
 	Int8 GreaterThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(int8) > rhs.(int8)
@@ -96,7 +101,7 @@ var (
 	Int8Descending LessThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(int8) < rhs.(int8)
 	}
-	Int8Desc LessThanFunc = Int8Descending
+	Int8Desc = Int8Descending
 
 	Rune GreaterThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(rune) > rhs.(rune)
@@ -106,7 +111,7 @@ var (
 	RuneDescending LessThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(rune) < rhs.(rune)
 	}
-	RuneDesc LessThanFunc = RuneDescending
+	RuneDesc = RuneDescending
 
 	String GreaterThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(string) > rhs.(string)
@@ -116,7 +121,7 @@ var (
 	StringDescending LessThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(string) < rhs.(string)
 	}
-	StringDesc LessThanFunc = StringDescending
+	StringDesc = StringDescending
 
 	Uint GreaterThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(uint) > rhs.(uint)
@@ -126,7 +131,7 @@ var (
 	UintDescending LessThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(uint) < rhs.(uint)
 	}
-	UintDesc LessThanFunc = UintDescending
+	UintDesc = UintDescending
 
 	Uint16 GreaterThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(uint16) > rhs.(uint16)
@@ -136,7 +141,7 @@ var (
 	Uint16Descending LessThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(uint16) < rhs.(uint16)
 	}
-	Uint16Desc LessThanFunc = Uint16Descending
+	Uint16Desc = Uint16Descending
 
 	Uint32 GreaterThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(uint32) > rhs.(uint32)
@@ -146,7 +151,7 @@ var (
 	Uint32Descending LessThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(uint32) < rhs.(uint32)
 	}
-	Uint32Desc LessThanFunc = Uint32Descending
+	Uint32Desc = Uint32Descending
 
 	Uint64 GreaterThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(uint64) > rhs.(uint64)
@@ -156,7 +161,7 @@ var (
 	Uint64Descending LessThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(uint64) < rhs.(uint64)
 	}
-	Uint64Desc LessThanFunc = Uint64Descending
+	Uint64Desc = Uint64Descending
 
 	Uint8 GreaterThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(uint8) > rhs.(uint8)
@@ -166,7 +171,7 @@ var (
 	Uint8Descending LessThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(uint8) < rhs.(uint8)
 	}
-	Uint8Desc LessThanFunc = Uint8Descending
+	Uint8Desc = Uint8Descending
 
 	Uintptr GreaterThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(uintptr) > rhs.(uintptr)
@@ -176,7 +181,7 @@ var (
 	UintptrDescending LessThanFunc = func(lhs, rhs interface{}) bool {
 		return lhs.(uintptr) < rhs.(uintptr)
 	}
-	UintptrDesc LessThanFunc = UintptrDescending
+	UintptrDesc = UintptrDescending
 
 	// the type []byte.
 	Bytes GreaterThanFunc = func(lhs, rhs interface{}) bool {
@@ -188,5 +193,5 @@ var (
 	BytesDescending LessThanFunc = func(lhs, rhs interface{}) bool {
 		return bytes.Compare(lhs.([]byte), rhs.([]byte)) < 0
 	}
-	BytesDesc LessThanFunc = BytesDescending
+	BytesDesc = BytesDescending
 )
