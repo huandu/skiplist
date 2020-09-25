@@ -1,123 +1,92 @@
-// A golang Skip List Implementation.
-// https://github.com/huandu/skiplist/
-//
-// Copyright 2011, Huan Du
-// Licensed under the MIT license
-// https://github.com/huandu/skiplist/blob/master/LICENSE
+// Copyright 2011 Huan Du. All rights reserved.
+// Licensed under the MIT license that can be found in the LICENSE file.
 
-// Package skiplist provides a skip list implementation in Go.
-// About skip list: http://en.wikipedia.org/wiki/Skip_list
+// Package skiplist implement skip list data structure.
+// See wikipedia for more details about this data structure. http://en.wikipedia.org/wiki/Skip_list
 //
-// Skip list is basically an ordered set.
-// Following code creates a skip list with int key and adds some values.
+// Skip list is basically an ordered map.
+//
+// Here is a sample to use this package.
+//
+//     // Creates a new skip list and restricts key type to int-like types.
 //     list := skiplist.New(skiplist.Int)
 //
-//     // adds some elements
+//     // Adds some values for keys.
 //     list.Set(20, "Hello")
 //     list.Set(10, "World")
-//     list.Set(40, true)         // value can be any type
-//     list.Set(40, 1000)         // replace last element with new value
+//     list.Set(40, true) // Value type is not restricted.
+//     list.Set(40, 1000) // Replace the of an existing element.
 //
-//     // try to find one
-//     e := list.Get(10)           // value is the Element with key 10
-//     _ = e.Value.(string)        // it's the "World". remember to do type cast
-//     v, ok := list.GetValue(20)  // directly get value. ok is false if not exists
-//     v2 := list.MustGetValue(10) // directly get value. panic if key doesn't exist
-//     notFound := list.Get(15)    // returns nil if key is not found
+//     // Finds elements.
+//     e := list.Get(10)           // Returns the element with the key.
+//     _ = e.Value.(string)
+//     v, ok := list.GetValue(20)  // Directly get value of the element. If the key is not found, ok is false.
+//     v2 := list.MustGetValue(10) // Directly get value of the element. Panic if the key is not found.
+//     notFound := list.Get(15)    // Returns nil if the key is not found.
 //
-//     // remove element
-//     old := list.Remove(40)     // remove found element and returns its pointer
-//                                // returns nil if key is not found
+//     // Removes an element and gets removed element.
+//     old := list.Remove(40)
+//     notFound := list.Remove(-20) // Returns nil if the key is not found.
 //
-//     // re-init list. it will make the list empty.
+//     // Initializes the list again to clean up all elements in the list.
 //     list.Init()
-//
-// Skip list elements have random number of next pointers. The max number (say
-// "max level") is configurable.
-//
-// The variable skiplist.DefaultMaxLevel is controlling global default.
-// Changing it will not affect created lists.
-//     skiplist.DefaultMaxLevel = 24  // change default to 24
-// Max level of a created list can also be changed even if it's not empty.
-//     list.SetMaxLevel(10)
-// Remember the side effect when changing this max level value.
-// Higher max level usually means higher memory consumption.
-// See its wikipedia page for more details.
-//
-// Most comparable built-in types are pre-defined in skiplist, including
-//     byte []byte float32 float64 int int16 int32 int64 int8
-//     rune string uint uint16 uint32 uint64 uint8 uintptr
-// Pre-defined compare function name is similar to the type name, e.g.
-// skiplist.Float32 is for float32 key. A special case is skiplist.Bytes is for []byte.
-// These functions order key from small to big (say "ascending order").
-// There are also reserved order functions with name like skiplist.IntDesc.
-//
-// For key types out of the pre-defined list, one can write a custom compare function.
-//     type GreaterThanFunc func (lhs, rhs interface{}) bool
-// Such compare function returns true if lhs > rhs. Note that, if lhs == rhs, compare
-// function (let the name is "foo") must act as following.
-//     // if lhs == rhs, following expression must be true
-//     foo(lhs, rhs) == false && foo(rhs, lhs) == false
-// There is another func type named LessThanFunc. It works similar to GreaterThanFunc,
-// except the order is big to small.
-// Here is a sample to write a compare func.
-//     type Foo struct {
-//         value int
-//     }
-//
-//     // it generates a score on a given key.
-//     // if key1 > key2, then there must be key1.Score() >= key2.Score().
-//     // it's optional. it's worth implementing if call compare func is quite expensive.
-//     func (f *Foo) Score() float64 {
-//         return float64(f.value)
-//     }
-//
-//     var greater skiplist.GreaterThanFunc = func(lhs, rhs interface{}) {
-//         return lhs.(Foo).value > rhs.(Foo).value
-//     }
-//     list := skiplist.New(greater)
-//
-//     // descending version is a bit different. mind the func type.
-//     var less skiplist.LessThanFunc = func(lhs, rhs interface{}) {
-//         return lhs.(Foo).value < rhs.(Foo).value
-//     })
-//     list := skiplist.New(less)
-//
-// Skiplist uses global rand source in math/rand by default. This rand source acquires a
-// lock when generating random number. Replacing it with a lock-free rand source can provide
-// slightly better performance. Use SkipList.SetRandSource to change rand source.
 package skiplist
 
 import (
+	"fmt"
+	"math"
+	"math/bits"
 	"math/rand"
+	"time"
 )
 
-// New creates a new skiplist.
-// keyFunc is a func checking the "greater than" logic.
-// If k1 equals k2, keyFunc(k1, k2) and keyFunc(k2, k1) must both be false.
-// For built-in types, keyFunc can be found in skiplist package.
-// For instance, skiplist.Int is for the list with int keys.
-// By default, the list with built-in type key is in ascending order.
-// The keyFunc named as skiplist.IntDesc is for descending key order list.
-func New(keyFunc Comparable) *SkipList {
+// DefaultMaxLevel is the default level for all newly created skip lists.
+// It can be changed globally. Changing it will not affect existing lists.
+// And all skip lists can update max level after creation through `SetMaxLevel()` method.
+var DefaultMaxLevel = 48
+
+// preallocDefaultMaxLevel is a constant to alloc memory on stack when Set new element.
+const preallocDefaultMaxLevel = 48
+
+// SkipList is the header of a skip list.
+type SkipList struct {
+	elementHeader
+
+	comparable Comparable
+	rand       *rand.Rand
+
+	maxLevel int
+	length   int
+	back     *Element
+}
+
+// New creates a new skip list with comparable to compare keys.
+//
+// There are lots of pre-defined strict-typed keys like Int, Float64, String, etc.
+// We can create custom comparable by implementing Comparable interface.
+func New(comparable Comparable) *SkipList {
 	if DefaultMaxLevel <= 0 {
 		panic("skiplist default level must not be zero or negative")
 	}
 
+	source := rand.NewSource(time.Now().UnixNano())
 	return &SkipList{
-		elementNode:    elementNode{next: make([]*Element, DefaultMaxLevel)},
-		prevNodesCache: make([]*elementNode, DefaultMaxLevel),
-		level:          DefaultMaxLevel,
-		keyFunc:        keyFunc,
-		randSource:     defaultSource,
-		reversed:       keyFunc.Descending(),
+		elementHeader: elementHeader{
+			levels: make([]*Element, DefaultMaxLevel),
+		},
+
+		comparable: comparable,
+		rand:       rand.New(source),
+
+		maxLevel: DefaultMaxLevel,
 	}
 }
 
-// Init resets a skiplist and discards all exists elements.
+// Init resets the list and discards all existing elements.
 func (list *SkipList) Init() *SkipList {
-	list.next = make([]*Element, list.level)
+	list.back = nil
 	list.length = 0
+	list.levels = make([]*Element, len(list.levels))
 	return list
 }
 
@@ -127,266 +96,406 @@ func (list *SkipList) Init() *SkipList {
 // The default rand acquires a global mutex before generating any number.
 // It's not necessary if the skiplist is well protected by caller.
 func (list *SkipList) SetRandSource(source rand.Source) {
-	list.randSource = source
+	list.rand = rand.New(source)
 }
 
 // Front returns the first element.
-func (list *SkipList) Front() *Element {
-	return list.next[0]
+//
+// The complexity is O(1).
+func (list *SkipList) Front() (front *Element) {
+	return list.levels[0]
 }
 
-// Len returns list length.
+// Back returns the last element.
+//
+// The complexity is O(1).
+func (list *SkipList) Back() *Element {
+	return list.back
+}
+
+// Len returns element count in this list.
+//
+// The complexity is O(1).
 func (list *SkipList) Len() int {
 	return list.length
 }
 
-// Set sets a value in the list with key.
-// If the key exists, change element value to the new one.
-// Returns new element pointer.
-func (list *SkipList) Set(key, value interface{}) *Element {
-	var element *Element
+// Set sets value for the key.
+// If the key exists, updates element's value.
+// Returns the element holding the key and value.
+//
+// The complexity is O(log(N)).
+func (list *SkipList) Set(key, value interface{}) (elem *Element) {
+	score := list.calcScore(key)
 
-	score := getScore(key, list.reversed)
-	prevs := list.getPrevElementNodes(key, score)
+	// Happy path for empty list.
+	if list.length == 0 {
+		level := list.randLevel()
+		elem = newElement(list, level, score, key, value)
 
-	// found an element with the same key, replace its value
-	if element = prevs[0].next[0]; element != nil && !list.keyFunc.Compare(element.key, key) {
-		element.Value = value
-		return element
+		for i := 0; i < level; i++ {
+			list.levels[i] = elem
+		}
+
+		list.back = elem
+		list.length++
+		return
 	}
 
-	element = &Element{
-		elementNode: elementNode{
-			next: make([]*Element, list.randLevel()),
-		},
-		key:   key,
-		score: score,
-		Value: value,
+	// Find out previous elements on every possible levels.
+	max := len(list.levels)
+	prevHeader := &list.elementHeader
+
+	var maxStaticAllocElemHeaders [preallocDefaultMaxLevel]*elementHeader
+	var prevElemHeaders []*elementHeader
+
+	if max <= preallocDefaultMaxLevel {
+		prevElemHeaders = maxStaticAllocElemHeaders[:max]
+	} else {
+		prevElemHeaders = make([]*elementHeader, max)
 	}
 
-	for i := range element.next {
-		element.next[i] = prevs[i].next[i]
-		prevs[i].next[i] = element
-	}
+	for i := max - 1; i >= 0; {
+		prevElemHeaders[i] = prevHeader
 
-	list.length++
-	return element
-}
+		for next := prevHeader.levels[i]; next != nil; next = prevHeader.levels[i] {
+			if comp := list.compare(score, key, next); comp <= 0 {
+				// Find the elem with the same key.
+				// Update value and return the elem.
+				if comp == 0 {
+					elem = next
+					elem.Value = value
+					return
+				}
 
-// Get returns an element.
-// Returns element pointer if found, nil if not found.
-func (list *SkipList) Get(key interface{}) *Element {
-	prev := &list.elementNode
-	var next *Element
-	score := getScore(key, list.reversed)
+				break
+			}
 
-	for i := list.level - 1; i >= 0; i-- {
-		next = prev.next[i]
+			prevHeader = &next.elementHeader
+			prevElemHeaders[i] = prevHeader
+		}
 
-		for next != nil &&
-			(score > next.score || (score == next.score && list.keyFunc.Compare(key, next.key))) {
-			prev = &next.elementNode
-			next = next.next[i]
+		// Skip levels if they point to the same element as topLevel.
+		topLevel := prevHeader.levels[i]
+
+		for i--; i >= 0 && prevHeader.levels[i] == topLevel; i-- {
+			prevElemHeaders[i] = prevHeader
 		}
 	}
 
-	if next != nil && score == next.score && !list.keyFunc.Compare(next.key, key) {
-		return next
+	// Create a new element.
+	level := list.randLevel()
+	elem = newElement(list, level, score, key, value)
+
+	// Set up prev element.
+	if prev := prevElemHeaders[0]; prev != &list.elementHeader {
+		elem.prev = prev.Element()
 	}
 
-	return nil
+	// Set up prevTopLevel.
+	if prev := prevElemHeaders[level-1]; prev != &list.elementHeader {
+		elem.prevTopLevel = prev.Element()
+	}
+
+	// Set up levels.
+	for i := 0; i < level; i++ {
+		elem.levels[i] = prevElemHeaders[i].levels[i]
+		prevElemHeaders[i].levels[i] = elem
+	}
+
+	// Find out the largest level with next element.
+	largestLevel := 0
+
+	for i := level - 1; i >= 0; i-- {
+		if elem.levels[i] != nil {
+			largestLevel = i + 1
+			break
+		}
+	}
+
+	// Adjust prev and prevTopLevel of next elements.
+	if next := elem.levels[0]; next != nil {
+		next.prev = elem
+	}
+
+	for i := 0; i < largestLevel; {
+		next := elem.levels[i]
+		nextLevel := next.Level()
+
+		if nextLevel <= level {
+			next.prevTopLevel = elem
+		}
+
+		i = nextLevel
+	}
+
+	// If the elem is the last element, set it as back.
+	if elem.Next() == nil {
+		list.back = elem
+	}
+
+	list.length++
+	return
 }
 
-// GetValue returns a value. It's a short hand for Get().Value.
-// Returns value and its existence status.
-func (list *SkipList) GetValue(key interface{}) (interface{}, bool) {
+// Get returns an element with the key.
+// If the key is not found, returns nil.
+//
+// The complexity is O(log(N)).
+func (list *SkipList) Get(key interface{}) (elem *Element) {
+	if list.length == 0 {
+		return
+	}
+
+	score := list.calcScore(key)
+
+	if score < list.Front().score || score > list.Back().score {
+		return
+	}
+
+	prevHeader := &list.elementHeader
+	i := len(list.levels) - 1
+
+	// Find out previous elements on every possible levels.
+	for i >= 0 {
+		for next := prevHeader.levels[i]; next != nil; next = prevHeader.levels[i] {
+			if comp := list.compare(score, key, next); comp <= 0 {
+				if comp == 0 {
+					elem = next
+					return
+				}
+
+				break
+			}
+
+			prevHeader = &next.elementHeader
+		}
+
+		topLevel := prevHeader.levels[i]
+
+		// Skip levels if they point to the same element as topLevel.
+		for i--; i >= 0 && prevHeader.levels[i] == topLevel; i-- {
+		}
+	}
+
+	return
+}
+
+// GetValue returns value of the element with the key.
+// It's short hand for Get().Value.
+//
+// The complexity is O(log(N)).
+func (list *SkipList) GetValue(key interface{}) (val interface{}, ok bool) {
 	element := list.Get(key)
 
 	if element == nil {
-		return nil, false
+		return
 	}
 
-	return element.Value, true
+	val = element.Value
+	ok = true
+	return
 }
 
-// MustGetValue returns a value. It will panic if key doesn't exist.
-// Returns value.
+// MustGetValue returns value of the element with the key.
+// It will panic if the key doesn't exist in the list.
+//
+// The complexity is O(log(N)).
 func (list *SkipList) MustGetValue(key interface{}) interface{} {
 	element := list.Get(key)
 
 	if element == nil {
-		panic("cannot find key in skiplist")
+		panic(fmt.Errorf("skiplist: cannot find key `%v` in skiplist", key))
 	}
 
 	return element.Value
 }
 
 // Remove removes an element.
-// Returns removed element pointer if found, nil if not found.
-func (list *SkipList) Remove(key interface{}) *Element {
-	score := getScore(key, list.reversed)
-	prevs := list.getPrevElementNodes(key, score)
+// Returns removed element pointer if found, nil if it's not found.
+//
+// The complexity is O(log(N)).
+func (list *SkipList) Remove(key interface{}) (elem *Element) {
+	elem = list.Get(key)
 
-	// found the element, remove it
-	if element := prevs[0].next[0]; element != nil && !list.keyFunc.Compare(element.key, key) {
-		for k, v := range element.next {
-			prevs[k].next[k] = v
-		}
-
-		list.length--
-		return element
+	if elem == nil {
+		return
 	}
 
-	return nil
+	list.RemoveElement(elem)
+	return
 }
 
-func (list *SkipList) getPrevElementNodes(key interface{}, score float64) []*elementNode {
-	prev := &list.elementNode
-	var next *Element
-
-	prevs := list.prevNodesCache
-
-	for i := list.level - 1; i >= 0; i-- {
-		next = prev.next[i]
-
-		for next != nil &&
-			(score > next.score || (score == next.score && list.keyFunc.Compare(key, next.key))) {
-			prev = &next.elementNode
-			next = next.next[i]
-		}
-
-		prevs[i] = prev
+// RemoveFront removes front element node and returns the removed element.
+//
+// The complexity is O(1).
+func (list *SkipList) RemoveFront() (front *Element) {
+	if list.length == 0 {
+		return
 	}
 
-	return prevs
+	front = list.Front()
+	list.RemoveElement(front)
+	return
+}
+
+// RemoveBack removes back element node and returns the removed element.
+//
+// The complexity is O(log(N)).
+func (list *SkipList) RemoveBack() (back *Element) {
+	if list.length == 0 {
+		return
+	}
+
+	back = list.back
+	list.RemoveElement(back)
+	return
+}
+
+// RemoveElement removes the elem from the list.
+//
+// The complexity is O(log(N)).
+func (list *SkipList) RemoveElement(elem *Element) {
+	if elem == nil || elem.list != list {
+		return
+	}
+
+	level := elem.Level()
+
+	// Find out all previous elements.
+	max := 0
+	prevElems := make([]*Element, level)
+	prev := elem.prev
+
+	for prev != nil && max < level {
+		prevLevel := len(prev.levels)
+
+		for ; max < prevLevel && max < level; max++ {
+			prevElems[max] = prev
+		}
+
+		for prev = prev.prevTopLevel; prev != nil && prev.Level() == prevLevel; prev = prev.prevTopLevel {
+		}
+	}
+
+	// Adjust prev elements which point to elem directly.
+	for i := 0; i < max; i++ {
+		prevElems[i].levels[i] = elem.levels[i]
+	}
+
+	for i := max; i < level; i++ {
+		list.levels[i] = elem.levels[i]
+	}
+
+	// Adjust prev and prevTopLevel of next elements.
+	if next := elem.Next(); next != nil {
+		next.prev = elem.prev
+	}
+
+	for i := 0; i < level; {
+		next := elem.levels[i]
+
+		if next == nil || next.prevTopLevel != elem {
+			break
+		}
+
+		i = next.Level()
+		next.prevTopLevel = prevElems[i-1]
+	}
+
+	// Adjust list.Back() if necessary.
+	if list.back == elem {
+		list.back = elem.prev
+	}
+
+	list.length--
+	elem.reset()
 }
 
 // MaxLevel returns current max level value.
 func (list *SkipList) MaxLevel() int {
-	return list.level
+	return list.maxLevel
 }
 
 // SetMaxLevel changes skip list max level.
 // If level is not greater than 0, just panic.
 func (list *SkipList) SetMaxLevel(level int) (old int) {
 	if level <= 0 {
-		panic("invalid argument to SetLevel")
+		panic(fmt.Errorf("skiplist: level must be larger than 0 (current is %v)", level))
 	}
 
-	old, list.level = list.level, level
+	list.maxLevel = level
+	old = len(list.levels)
 
-	if old == level {
+	if level == old {
 		return
 	}
 
 	if old > level {
-		list.next = list.next[:level]
-		list.prevNodesCache = list.prevNodesCache[:level]
+		for i := old - 1; i >= level; i-- {
+			if list.levels[i] != nil {
+				level = i
+				break
+			}
+		}
+
+		list.levels = list.levels[:level]
 		return
 	}
 
-	next := make([]*Element, level)
-	copy(next, list.next)
-	list.next = next
-	list.prevNodesCache = make([]*elementNode, level)
+	if level <= cap(list.levels) {
+		list.levels = list.levels[:level]
+		return
+	}
 
+	levels := make([]*Element, level)
+	copy(levels, list.levels)
+	list.levels = levels
 	return
 }
 
 func (list *SkipList) randLevel() int {
-	l := 1
-
-	for ((list.randSource.Int63() >> 32) & 0xFFFF) < Propability {
-		l++
+	if list.maxLevel <= 1 {
+		return 1
 	}
 
-	if l > list.level {
-		l = list.level
+	// Use log_2(list.length) * 4 as estimated max level.
+	estimated := bits.Len(uint(list.length)) * 4
+
+	if estimated > list.maxLevel {
+		estimated = list.maxLevel
 	}
 
-	return l
+	// prob should be a bit more than 1/2 chance to make level balanced.
+	// This value is selected by some random Get tests on a random generated list.
+	// The magic number 3/8 works best when list size < 10,000,000.
+	const prob = math.MaxInt32 * 3 / 8
+
+	for i := 1; i < estimated; i++ {
+		if list.rand.Int31() < prob {
+			return i
+		}
+	}
+
+	return list.maxLevel - 1
 }
 
-func getScore(key interface{}, reversed bool) (score float64) {
-	switch t := key.(type) {
-	case []byte:
-		var result uint64
-		data := []byte(t)
-		l := len(data)
-
-		// only use first 8 bytes
-		if l > 8 {
-			l = 8
+// compare compares value of two elements and returns -1, 0 and 1.
+func (list *SkipList) compare(score float64, key interface{}, rhs *Element) int {
+	if score != rhs.score {
+		if score > rhs.score {
+			return 1
+		} else if score < rhs.score {
+			return -1
 		}
 
-		for i := 0; i < l; i++ {
-			result |= uint64(data[i]) << uint(8*(7-i))
-		}
-
-		score = float64(result)
-
-	case float32:
-		score = float64(t)
-
-	case float64:
-		score = t
-
-	case int:
-		score = float64(t)
-
-	case int16:
-		score = float64(t)
-
-	case int32:
-		score = float64(t)
-
-	case int64:
-		score = float64(t)
-
-	case int8:
-		score = float64(t)
-
-	case string:
-		var result uint64
-		data := string(t)
-		l := len(data)
-
-		// only use first 8 bytes
-		if l > 8 {
-			l = 8
-		}
-
-		for i := 0; i < l; i++ {
-			result |= uint64(data[i]) << uint(8*(7-i))
-		}
-
-		score = float64(result)
-
-	case uint:
-		score = float64(t)
-
-	case uint16:
-		score = float64(t)
-
-	case uint32:
-		score = float64(t)
-
-	case uint64:
-		score = float64(t)
-
-	case uint8:
-		score = float64(t)
-
-	case uintptr:
-		score = float64(t)
-
-	case Scorable:
-		score = t.Score()
+		return 0
 	}
 
-	if reversed {
-		score = -score
-	}
+	return list.comparable.Compare(key, rhs.key)
+}
 
+func (list *SkipList) calcScore(key interface{}) (score float64) {
+	score = list.comparable.CalcScore(key)
 	return
 }

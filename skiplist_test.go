@@ -1,310 +1,272 @@
-// A golang Skip List Implementation.
-// https://github.com/huandu/skiplist/
-//
-// Copyright 2011, Huan Du
-// Licensed under the MIT license
-// https://github.com/huandu/skiplist/blob/master/LICENSE
+// Copyright 2011 Huan Du. All rights reserved.
+// Licensed under the MIT license that can be found in the LICENSE file.
 
 package skiplist
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
-	"runtime"
 	"testing"
 	"time"
+
+	"github.com/huandu/go-assert"
 )
 
-func checkSanity(t *testing.T, list *SkipList) {
-	// each level must be correctly ordered
-	for k, v := range list.next {
-		//t.Log("Level", k)
+func TestBasicCRUD(t *testing.T) {
+	a := assert.New(t)
+	list := New(Float64)
+	a.Assert(list.Len() == 0)
 
-		if v == nil {
-			continue
+	elem1 := list.Set(12.34, "first")
+	a.Assert(elem1 != nil)
+	a.Equal(list.Len(), 1)
+	a.Equal(list.Front(), elem1)
+	a.Equal(list.Back(), elem1)
+	a.Equal(elem1.Next(), nil)
+	a.Equal(elem1.Prev(), nil)
+
+	assertSanity(a, list)
+
+	elem2 := list.Set(23.45, "second")
+	a.Assert(elem2 != nil)
+	a.NotEqual(elem1, elem2)
+	a.Equal(list.Len(), 2)
+	a.Equal(list.Front(), elem1)
+	a.Equal(list.Back(), elem2)
+	a.Equal(elem2.Next(), nil)
+	a.Equal(elem2.Prev(), elem1)
+
+	assertSanity(a, list)
+
+	elem3 := list.Set(16.78, "middle")
+	a.Assert(elem3 != nil)
+	a.NotEqual(elem3, elem1)
+	a.NotEqual(elem3, elem2)
+	a.Equal(list.Len(), 3)
+	a.Equal(list.Front(), elem1)
+	a.Equal(list.Back(), elem2)
+	a.Equal(elem3.Next(), elem2)
+	a.Equal(elem3.Prev(), elem1)
+
+	assertSanity(a, list)
+
+	elem4 := list.Set(9.01, "very beginning")
+	a.Assert(elem4 != nil)
+	a.NotEqual(elem4, elem1)
+	a.NotEqual(elem4, elem2)
+	a.NotEqual(elem4, elem3)
+	a.Equal(list.Len(), 4)
+	a.Equal(list.Front(), elem4)
+	a.Equal(list.Back(), elem2)
+	a.Equal(elem4.Next(), elem1)
+	a.Equal(elem4.Prev(), nil)
+
+	assertSanity(a, list)
+
+	elem5 := list.Set(16.78, "middle overwrite")
+	a.Assert(elem3 != nil)
+	a.NotEqual(elem3, elem1)
+	a.NotEqual(elem3, elem2)
+	a.Equal(elem5, elem3)
+	a.NotEqual(elem5, elem4)
+	a.Equal(list.Len(), 4)
+	a.Equal(list.Front(), elem4)
+	a.Equal(list.Back(), elem2)
+	a.Equal(elem5.Next(), elem2)
+	a.Equal(elem5.Prev(), elem1)
+
+	min1_2 := func(a, b int) int {
+		if a < b {
+			return a / 2
+		}
+		return b / 2
+	}
+	a.Equal(elem5.NextLevel(0), elem5.Next())
+	a.Equal(elem5.NextLevel(-1), nil)
+	a.Equal(elem5.NextLevel(min1_2(elem2.Level(), elem5.Level())), elem2)
+	a.Equal(elem5.NextLevel(elem2.Level()), nil)
+	a.Equal(elem5.PrevLevel(0), elem5.Prev())
+	a.Equal(elem5.PrevLevel(min1_2(elem1.Level(), elem5.Level())), elem1)
+	a.Equal(elem5.PrevLevel(-1), nil)
+
+	a.Assert(list.Remove(9999) == nil)
+	a.Equal(list.Len(), 4)
+	a.Assert(list.Remove(13.24) == nil)
+	a.Equal(list.Len(), 4)
+
+	assertSanity(a, list)
+
+	list.SetMaxLevel(1)
+	assertSanity(a, list)
+	list.SetMaxLevel(128)
+	assertSanity(a, list)
+	list.SetMaxLevel(32)
+	assertSanity(a, list)
+	list.SetMaxLevel(32)
+	assertSanity(a, list)
+
+	elem2Removed := list.Remove(elem2.Key())
+	a.Assert(elem2Removed != nil)
+	a.Equal(elem2Removed, elem2)
+	a.Assert(elem2Removed.Prev() == nil)
+	a.Assert(elem2Removed.Next() == nil)
+	a.Equal(list.Len(), 3)
+	a.Equal(list.Front(), elem4)
+	a.Equal(list.Back(), elem5)
+
+	assertSanity(a, list)
+
+	front := list.RemoveFront()
+	a.Assert(front == elem4)
+	a.Equal(list.Len(), 2)
+	a.Equal(list.Front(), elem1)
+	a.Equal(list.Back(), elem5)
+
+	back := list.RemoveBack()
+	a.Assert(back == elem5)
+	a.Equal(list.Len(), 1)
+	a.Equal(list.Front(), elem1)
+	a.Equal(list.Back(), elem1)
+
+	assertSanity(a, list)
+
+	list.Init()
+	a.Equal(list.Len(), 0)
+	a.Equal(list.Get(12.34), nil)
+}
+
+type testCustomComparable struct {
+	High, Low int
+}
+
+func TestCustomComparable(t *testing.T) {
+	a := assert.New(t)
+	comparable := GreaterThanFunc(func(k1, k2 interface{}) int {
+		v1 := k1.(*testCustomComparable)
+		v2 := k2.(*testCustomComparable)
+
+		if v1.High > v2.High {
+			return 1
 		}
 
-		if k > len(v.next) {
-			t.Fatal("first node's level must be no less than current level")
+		if v1.High < v2.High {
+			return -1
 		}
 
-		next := v
-		cnt := 1
-
-		for next.next[k] != nil {
-			if !list.keyFunc.Compare(next.next[k].key, next.key) {
-				t.Fatalf("next key value must be greater than prev key value. [next:%v] [prev:%v]", next.next[k].key, next.key)
-			}
-
-			if next.score > next.next[k].score {
-				t.Fatalf("next key score must be no less than prev key score. [next:%v] [prev:%v]", next.next[k].score, next.score)
-			}
-
-			if k > len(next.next) {
-				t.Fatalf("node's level must be no less than current level. [cur:%v] [node:%v]", k, next.next)
-			}
-
-			//t.Log("TEST VALUE", next.key, next.score, next.Value)
-			next = next.next[k]
-			cnt++
+		if v1.Low > v2.Low {
+			return 1
 		}
 
-		if k == 0 {
-			if cnt != list.Len() {
-				t.Fatalf("list len must match the level 0 nodes count. [cur:%v] [level0:%v]", cnt, list.Len())
-			}
+		if v1.Low < v2.Low {
+			return -1
 		}
-	}
+
+		return 0
+	})
+	k1 := &testCustomComparable{10, 10}
+	k2 := &testCustomComparable{10, 7}
+	k3 := &testCustomComparable{11, 3}
+
+	list := New(comparable)
+	list.Set(k1, "k1")
+	list.Set(k2, "k2")
+	list.Set(k3, "k3")
+
+	a.Equal(list.Front(), list.Get(k2))
+	a.Equal(list.Back(), list.Get(k3))
+
+	// Reset list to a new one.
+	list = New(Reverse(comparable))
+	list.Set(k1, "k1")
+	list.Set(k2, "k2")
+	list.Set(k3, "k3")
+
+	a.Equal(list.Front(), list.Get(k3))
+	a.Equal(list.Back(), list.Get(k2))
+
+	// Reset list again to a new one.
+	list = New(LessThanFunc(comparable))
+	list.Set(k1, "k1")
+	list.Set(k2, "k2")
+	list.Set(k3, "k3")
+
+	a.Equal(list.Front(), list.Get(k3))
+	a.Equal(list.Back(), list.Get(k2))
 }
 
-func testBasicIntCRUD(t *testing.T, reversed bool) {
-	var list *SkipList
+func TestRandomList(t *testing.T) {
+	a := assert.New(t)
 
-	if reversed {
-		list = New(IntDesc)
-	} else {
-		list = New(Int)
+	const seed = 0xa30378d2
+	const N = 1000000
+	source := rand.NewSource(seed)
+	rnd := rand.New(source)
+	list := New(Int64Desc)
+
+	for i := 0; i < N; i++ {
+		key := rnd.Intn(N)
+		list.Set(key, i)
 	}
 
-	list.Set(10, 1)
-	list.Set(60, 2)
-	list.Set(30, 3)
-	list.Set(20, 4)
-	list.Set(90, 5)
-	t.Log("inserted")
-	checkSanity(t, list)
+	for i := 0; i < N; i++ {
+		switch i % 4 {
+		case 0:
+			key := rnd.Intn(N)
+			list.Remove(key)
 
-	list.Set(30, 9)
-	t.Log("inserted duplicates")
-	checkSanity(t, list)
+		case 1:
+			key := rnd.Intn(N)
+			list.Set(key, i)
 
-	list.Remove(0)
-	list.Remove(20)
-	t.Log("removed")
-	checkSanity(t, list)
+		case 2:
+			list.RemoveBack()
 
-	v1 := list.Get(10)
-	v2, ok2 := list.GetValue(60)
-	v3, ok3 := list.GetValue(30)
-	v4, ok4 := list.GetValue(20)
-	v5, ok5 := list.GetValue(90)
-	v6, ok6 := list.GetValue(-1)
-
-	if v1 == nil || v1.Value.(int) != 1 || v1.Key().(int) != 10 {
-		t.Fatal(`wrong "10" value`, v1)
-	}
-
-	if v2 == nil || v2.(int) != 2 || !ok2 {
-		t.Fatal(`wrong "60" value`)
-	}
-
-	if v3 == nil || v3.(int) != 9 || !ok3 {
-		t.Fatal(`wrong "30" value`)
-	}
-
-	if v4 != nil || ok4 {
-		t.Fatal(`wrong "20" value`)
-	}
-
-	if v5 == nil || v5.(int) != 5 || !ok5 {
-		t.Fatal(`wrong "90" value`)
-	}
-
-	if v6 != nil || ok6 {
-		t.Fatal(`wrong "-1" value`)
-	}
-}
-
-func TestBasicIntCRUDNormal(t *testing.T) {
-	testBasicIntCRUD(t, false)
-}
-
-func TestBasicIntCRUDDesc(t *testing.T) {
-	testBasicIntCRUD(t, true)
-}
-
-func testBasicStringCRUD(t *testing.T, reversed bool) {
-	var list *SkipList
-
-	if reversed {
-		list = New(StringDesc)
-	} else {
-		list = New(String)
-	}
-
-	list.Set("A", 1)
-	list.Set("golang", 2)
-	list.Set("Skip", 3)
-	list.Set("List", 4)
-	list.Set("Implementation", 5)
-	t.Log("inserted")
-	checkSanity(t, list)
-
-	list.Set("List", 9)
-	t.Log("inserted duplicates")
-	checkSanity(t, list)
-
-	list.Remove("a")
-	list.Remove("List")
-	t.Log("removed")
-	checkSanity(t, list)
-
-	v1 := list.Get("A")
-	v2, ok2 := list.GetValue("golang")
-	v3, ok3 := list.GetValue("Skip")
-	v4, ok4 := list.GetValue("List")
-	v5, ok5 := list.GetValue("Implementation")
-	v6, ok6 := list.GetValue("not-exist")
-
-	if v1 == nil || v1.Value.(int) != 1 || v1.Key().(string) != "A" {
-		t.Fatal(`wrong "A" value`, v1)
-	}
-
-	if v2 == nil || v2.(int) != 2 || !ok2 {
-		t.Fatal(`wrong "golang" value`, v2)
-	}
-
-	if v3 == nil || v3.(int) != 3 || !ok3 {
-		t.Fatal(`wrong "Skip" value`, v3)
-	}
-
-	if v4 != nil || ok4 {
-		t.Fatal(`wrong "List" value`, v4)
-	}
-
-	if v5 == nil || v5.(int) != 5 || !ok5 {
-		t.Fatal(`wrong "Implementation" value`, v5)
-	}
-
-	if v6 != nil || ok6 {
-		t.Fatal(`wrong "not-exist" value`, v6)
-	}
-}
-
-func TestBasicStringCRUDNormal(t *testing.T) {
-	testBasicStringCRUD(t, false)
-}
-
-func TestBasicStringCRUDDesc(t *testing.T) {
-	testBasicStringCRUD(t, true)
-}
-
-func TestChangeLevel(t *testing.T) {
-	DefaultMaxLevel = 10
-	list := New(IntDesc)
-
-	if list.MaxLevel() != 10 {
-		t.Fatal("max level must equal default max value")
-	}
-
-	for i := 0; i <= 200; i += 4 {
-		list.Set(i, i*10)
-	}
-
-	checkSanity(t, list)
-
-	list.SetMaxLevel(20)
-	checkSanity(t, list)
-
-	for i := 1; i <= 201; i += 4 {
-		list.Set(i, i*10)
-	}
-
-	list.SetMaxLevel(4)
-	checkSanity(t, list)
-
-	if list.Len() != 102 {
-		t.Fatal("wrong list element number", list.Len())
-	}
-
-	for c := list.Front(); c != nil; c = c.Next() {
-		if c.Key().(int)*10 != c.Value.(int) {
-			t.Fatal("wrong list element value")
+		case 3:
+			list.RemoveFront()
 		}
 	}
 
-	DefaultMaxLevel = 32
+	assertSanity(a, list)
 }
 
 func BenchmarkDefaultWorstInserts(b *testing.B) {
-	b.StopTimer()
-	runtime.GC()
 	list := New(Int)
-	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
 		list.Set(i, i)
 	}
-
-	list = nil
 }
 
 func BenchmarkDefaultBestInserts(b *testing.B) {
-	b.StopTimer()
-	runtime.GC()
 	list := New(IntDesc)
-	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
-		list.Set(i, i)
+		var v interface{} = i
+		list.Set(v, v)
 	}
-
-	list = nil
-}
-
-func BenchmarkWorstInsertsWithLocalRandSource(b *testing.B) {
-	b.StopTimer()
-	runtime.GC()
-	list := New(Int)
-	source := rand.NewSource(time.Now().UnixNano())
-	list.SetRandSource(source)
-
-	b.StartTimer()
-
-	for i := 0; i < b.N; i++ {
-		list.Set(i, i)
-	}
-
-	list = nil
-}
-
-func BenchmarkBestInsertsWithLocalRandSource(b *testing.B) {
-	b.StopTimer()
-	runtime.GC()
-	list := New(IntDesc)
-	source := rand.NewSource(time.Now().UnixNano())
-	list.SetRandSource(source)
-
-	b.StartTimer()
-
-	for i := 0; i < b.N; i++ {
-		list.Set(i, i)
-	}
-
-	list = nil
 }
 
 func BenchmarkRandomSelect(b *testing.B) {
-	b.StopTimer()
-	runtime.GC()
 	list := New(IntDesc)
+	keys := make([]interface{}, 0, b.N)
 
 	for i := 0; i < b.N; i++ {
+		keys = append(keys, i)
 		list.Set(i, i)
 	}
 
-	keys := make([]int, b.N)
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	rnd.Shuffle(b.N, func(i, j int) {
+		keys[i], keys[j] = keys[j], keys[i]
+	})
+
+	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		keys[i] = rand.Intn(b.N)
+		key := keys[i]
+		list.Get(key)
 	}
-
-	b.StartTimer()
-	for _, k := range keys {
-		list.Get(k)
-	}
-
-	list = nil
 }
 
 func ExampleSkipList() {
@@ -317,20 +279,112 @@ func ExampleSkipList() {
 	list.Set(78, 90.12)
 
 	// Get element by index.
-	elem := list.Get(34) // Value is stored in elem.Value.
-	fmt.Println(elem.Value)
-	next := elem.Next() // Get next element.
-	fmt.Println(next.Value)
+	elem := list.Get(34)                // Value is stored in elem.Value.
+	fmt.Println(elem.Value)             // Output: 56
+	next := elem.Next()                 // Get next element.
+	prev := next.Prev()                 // Get previous element.
+	fmt.Println(next.Value, prev.Value) // Output: 90.12    56
 
-	// Or get value directly just like a map
+	// Or, directly get value just like a map
 	val, ok := list.GetValue(34)
-	fmt.Println(val, ok)
+	fmt.Println(val, ok) // Output: 56  true
 
-	// Remove an element by index.
+	// Remove an element for key.
 	list.Remove(34)
+}
+
+func ExampleGreaterThanFunc() {
+	type T struct {
+		Rad float64
+	}
+	list := New(GreaterThanFunc(func(k1, k2 interface{}) int {
+		s1 := math.Sin(k1.(T).Rad)
+		s2 := math.Sin(k2.(T).Rad)
+
+		if s1 > s2 {
+			return 1
+		} else if s1 < s2 {
+			return -1
+		}
+
+		return 0
+	}))
+	list.Set(T{math.Pi / 8}, "sin(π/8)")
+	list.Set(T{math.Pi / 2}, "sin(π/2)")
+	list.Set(T{math.Pi}, "sin(π)")
+
+	fmt.Println(list.Front().Value) // Output: sin(π)
+	fmt.Println(list.Back().Value)  // Output: sin(π/2)
 
 	// Output:
-	// 56
-	// 90.12
-	// 56 true
+	// sin(π)
+	// sin(π/2)
+}
+
+func assertSanity(a *assert.A, list *SkipList) {
+	l := list.Len()
+	maxLevel := len(list.levels) // Actual max level can be larger than list.MaxLevel().
+	cnt := 0
+	a.Use(&l, &cnt, &maxLevel)
+	a.Assert(l >= 0)
+	a.Assert(maxLevel >= list.MaxLevel())
+
+	if l == 0 {
+		return
+	}
+
+	// Collect all elements.
+	allElems := make([]*Element, 0, l)
+
+	for elem := list.Front(); elem != nil; elem = elem.Next() {
+		allElems = append(allElems, elem)
+		cnt++
+
+		a.Assert(elem.list == list)
+	}
+
+	a.Assert(cnt == l)
+	a.Equal(allElems[0], list.Front())
+	a.Equal(allElems[l-1], list.Back())
+
+	// Score must be sorted.
+	prevScore := allElems[0].Score()
+	comp := list.comparable
+	a.Use(&prevScore)
+
+	for i := 1; i < l; i++ {
+		score := allElems[i].Score()
+		k1 := allElems[i-1].Key()
+		k2 := allElems[i].Key()
+
+		// a.Use(&i, &score, &k1, k2)
+		a.Assert(prevScore <= score)
+		a.Assert(comp.Compare(k1, k2) < 0)
+
+		prevScore = score
+	}
+
+	// All levels are well-orgnized.
+	for i := 0; i < maxLevel; i++ {
+		var prev *Element
+		elem := list.levels[i]
+
+		for elem != nil {
+			level := elem.Level()
+
+			// a.Use(&i, &level)
+			a.Assert(level > i)
+			a.Equal(elem.PrevLevel(i), prev)
+
+			prev = elem
+			elem = elem.NextLevel(i)
+		}
+	}
+
+	// Prev and levels must be correct.
+	for _, elem := range allElems {
+		if prev := elem.Prev(); prev != nil {
+			a.Equal(prev.Next(), elem)
+		}
+	}
 }
