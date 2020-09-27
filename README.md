@@ -3,6 +3,7 @@
 [![Build Status](https://travis-ci.org/huandu/skiplist.svg?branch=master)](https://travis-ci.org/huandu/skiplist)
 [![GoDoc](https://godoc.org/github.com/huandu/skiplist?status.svg)](https://pkg.go.dev/github.com/huandu/skiplist)
 [![Go Report](https://goreportcard.com/badge/github.com/huandu/skiplist)](https://goreportcard.com/report/github.com/huandu/skiplist)
+[![Coverage Status](https://coveralls.io/repos/github/huandu/skiplist/badge.svg?branch=master)](https://coveralls.io/github/huandu/skiplist?branch=master)
 
 Skip list is an ordered map. See wikipedia page [skip list](http://en.wikipedia.org/wiki/Skip_list) to learn algorithm details about this data structure.
 
