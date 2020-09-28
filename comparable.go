@@ -20,24 +20,24 @@ type GreaterThanFunc func(lhs, rhs interface{}) int
 // LessThanFunc returns true if lhs less than rhs
 type LessThanFunc GreaterThanFunc
 
-// Compare compares lhs and rhs using f.
+// Compare compares lhs and rhs by calling `f(lhs, rhs)`.
 func (f GreaterThanFunc) Compare(lhs, rhs interface{}) int {
 	return f(lhs, rhs)
 }
 
-// CalcScore calculates score of a key through default CalcScore.
+// CalcScore always returns 0 as there is no way to understand how f compares keys.
 func (f GreaterThanFunc) CalcScore(key interface{}) float64 {
-	return CalcScore(key)
+	return 0
 }
 
-// Compare compares lhs and rhs using f.
+// Compare compares lhs and rhs by calling `-f(lhs, rhs)`.
 func (f LessThanFunc) Compare(lhs, rhs interface{}) int {
 	return -f(lhs, rhs)
 }
 
-// CalcScore calculates score of a key through default CalcScore.
+// CalcScore always returns 0 as there is no way to understand how f compares keys.
 func (f LessThanFunc) CalcScore(key interface{}) float64 {
-	return -CalcScore(key)
+	return 0
 }
 
 // Reverse creates a reversed comparable.

@@ -5,14 +5,14 @@ package skiplist
 
 import "reflect"
 
-// Scorable is used by skip list using customized key comparing function.
-// For built-in functions, there is no need to care of this interface.
+// Scorable is used by skip list to optimize comparing performance.
+// If two keys have different score values, they must be different keys.
 //
-// Every skip list element with customized key must have a score value
-// to indicate its sequence.
-// For any two elements with key "k1" and "k2":
-// - If Compare(k1, k2) is true, k1.Score() >= k2.Score() must be true.
-// - If Compare(k1, k2) is false and k1 doesn't equal to k2, k1.Score() < k2.Score() must be true.
+// For any key `k1` and `k2`, the calculated score must follow these rules.
+//
+//     - If Compare(k1, k2) is positive, k1.Score() >= k2.Score() must be true.
+//     - If Compare(k1, k2) is negative, k1.Score() <= k2.Score() must be true.
+//     - If Compare(k1, k2) is 0, k1.Score() == k2.Score() must be true.
 type Scorable interface {
 	Score() float64
 }
