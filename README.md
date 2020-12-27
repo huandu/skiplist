@@ -1,6 +1,6 @@
 # Skip List in Golang
 
-[![Build Status](https://travis-ci.com/huandu/skiplist.svg?branch=master)](https://travis-ci.com/huandu/skiplist)
+[![Go](https://github.com/huandu/skiplist/workflows/Go/badge.svg)](https://github.com/huandu/skiplist/actions)
 [![Go Doc](https://godoc.org/github.com/huandu/skiplist?status.svg)](https://pkg.go.dev/github.com/huandu/skiplist)
 [![Go Report](https://goreportcard.com/badge/github.com/huandu/skiplist)](https://goreportcard.com/report/github.com/huandu/skiplist)
 [![Coverage Status](https://coveralls.io/repos/github/huandu/skiplist/badge.svg?branch=master)](https://coveralls.io/github/huandu/skiplist?branch=master)
