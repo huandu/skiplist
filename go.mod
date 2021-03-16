@@ -1,4 +1,4 @@
-module github.com/huandu/skiplist
+module github.com/jdhxyy/skiplist
 
 go 1.12
 

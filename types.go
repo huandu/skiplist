@@ -134,11 +134,39 @@ var typeOfBytes = reflect.TypeOf([]byte(nil))
 
 func compareTypes(lhs, rhs reflect.Value, kind reflect.Kind) int {
 	switch kind {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr,
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uintptr,
 		reflect.Float32, reflect.Float64:
 		v1 := calcScore(lhs)
 		v2 := calcScore(rhs)
+
+		if v1 > v2 {
+			return 1
+		}
+
+		if v1 < v2 {
+			return -1
+		}
+
+		return 0
+
+	case reflect.Int64:
+		v1 := lhs.Int()
+		v2 := rhs.Int()
+
+		if v1 > v2 {
+			return 1
+		}
+
+		if v1 < v2 {
+			return -1
+		}
+
+		return 0
+
+	case reflect.Uint64:
+		v1 := lhs.Uint()
+		v2 := rhs.Uint()
 
 		if v1 > v2 {
 			return 1
