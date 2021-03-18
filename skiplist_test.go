@@ -388,3 +388,31 @@ func assertSanity(a *assert.A, list *SkipList) {
 		}
 	}
 }
+
+func TestUint64(t *testing.T) {
+	a := assert.New(t)
+	list := New(Uint64)
+	a.Assert(list.Len() == 0)
+
+	elem1 := list.Set(uint64(0xF141000000000404), "uint64-404")
+	a.Assert(elem1 != nil)
+	elem2 := list.Set(uint64(0xF141000000000405), "uint64-405")
+	a.Assert(elem2 != nil)
+
+	a.Assert(list.Get(uint64(0xF141000000000404)).Value == "uint64-404")
+	a.Assert(list.Get(uint64(0xF141000000000405)).Value == "uint64-405")
+}
+
+func TestInt64(t *testing.T) {
+	a := assert.New(t)
+	list := New(Int64)
+	a.Assert(list.Len() == 0)
+
+	elem1 := list.Set(int64(0x2141000000000404), "int64-404")
+	a.Assert(elem1 != nil)
+	elem2 := list.Set(int64(0x2141000000000405), "int64-405")
+	a.Assert(elem2 != nil)
+
+	a.Assert(list.Get(int64(0x2141000000000404)).Value == "int64-404")
+	a.Assert(list.Get(int64(0x2141000000000405)).Value == "int64-405")
+}
