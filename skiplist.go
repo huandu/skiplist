@@ -243,41 +243,19 @@ func (list *SkipList) Set(key, value interface{}) (elem *Element) {
 //
 // The complexity is O(log(N)).
 func (list *SkipList) Get(key interface{}) (elem *Element) {
-	if list.length == 0 {
+	firstElem := list.FindFirstElementGreaterOrEqualToKey(key)
+	if firstElem == nil {
+		elem = nil
 		return
 	}
 
 	score := list.calcScore(key)
-
-	if score < list.Front().score || score > list.Back().score {
+	if list.compare(score, key, firstElem) != 0 {
+		elem = nil
 		return
 	}
 
-	prevHeader := &list.elementHeader
-	i := len(list.levels) - 1
-
-	// Find out previous elements on every possible levels.
-	for i >= 0 {
-		for next := prevHeader.levels[i]; next != nil; next = prevHeader.levels[i] {
-			if comp := list.compare(score, key, next); comp <= 0 {
-				if comp == 0 {
-					elem = next
-					return
-				}
-
-				break
-			}
-
-			prevHeader = &next.elementHeader
-		}
-
-		topLevel := prevHeader.levels[i]
-
-		// Skip levels if they point to the same element as topLevel.
-		for i--; i >= 0 && prevHeader.levels[i] == topLevel; i-- {
-		}
-	}
-
+	elem = firstElem
 	return
 }
 
@@ -309,6 +287,55 @@ func (list *SkipList) MustGetValue(key interface{}) interface{} {
 	}
 
 	return element.Value
+}
+
+// FindFirstElementGreaterOrEqualToKey returns the first element that is greater or equal to key.
+// If there is no such element, returns nil.
+//
+// The complexity is O(log(N)).
+func (list *SkipList) FindFirstElementGreaterOrEqualToKey(key interface{}) (elem *Element) {
+	if list.Len() == 0 {
+		return
+	}
+
+	score := list.calcScore(key)
+
+	if score < list.Front().score {
+		// Cannot fast return when score == list.Front().score.
+		// Different elements may have the same score.
+		// Should comparing by Comparable.Compare in this case.
+		return list.Front()
+	}
+	if score > list.Back().score {
+		return nil
+	}
+
+	prevHeader := &list.elementHeader
+	i := len(list.levels) - 1
+
+	// Find out previous elements on every possible levels.
+	for i >= 0 {
+		for next := prevHeader.levels[i]; next != nil; next = prevHeader.levels[i] {
+			if comp := list.compare(score, key, next); comp <= 0 {
+				elem = next
+				if comp == 0 {
+					return
+				}
+
+				break
+			}
+
+			prevHeader = &next.elementHeader
+		}
+
+		topLevel := prevHeader.levels[i]
+
+		// Skip levels if they point to the same element as topLevel.
+		for i--; i >= 0 && prevHeader.levels[i] == topLevel; i-- {
+		}
+	}
+
+	return
 }
 
 // Remove removes an element.
