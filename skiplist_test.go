@@ -17,7 +17,7 @@ func TestBasicCRUD(t *testing.T) {
 	a := assert.New(t)
 	list := New(Float64)
 	a.Assert(list.Len() == 0)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(0), nil)
+	a.Equal(list.Find(0), nil)
 
 	elem1 := list.Set(12.34, "first")
 	a.Assert(elem1 != nil)
@@ -26,9 +26,9 @@ func TestBasicCRUD(t *testing.T) {
 	a.Equal(list.Back(), elem1)
 	a.Equal(elem1.Next(), nil)
 	a.Equal(elem1.Prev(), nil)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(0), elem1)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(12.34), elem1)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(15), nil)
+	a.Equal(list.Find(0), elem1)
+	a.Equal(list.Find(12.34), elem1)
+	a.Equal(list.Find(15), nil)
 
 	assertSanity(a, list)
 
@@ -40,9 +40,9 @@ func TestBasicCRUD(t *testing.T) {
 	a.Equal(list.Back(), elem2)
 	a.Equal(elem2.Next(), nil)
 	a.Equal(elem2.Prev(), elem1)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(-10), elem1)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(15), elem2)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(25), nil)
+	a.Equal(list.Find(-10), elem1)
+	a.Equal(list.Find(15), elem2)
+	a.Equal(list.Find(25), nil)
 
 	assertSanity(a, list)
 
@@ -55,9 +55,9 @@ func TestBasicCRUD(t *testing.T) {
 	a.Equal(list.Back(), elem2)
 	a.Equal(elem3.Next(), elem2)
 	a.Equal(elem3.Prev(), elem1)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(-20), elem1)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(15), elem3)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(20), elem2)
+	a.Equal(list.Find(-20), elem1)
+	a.Equal(list.Find(15), elem3)
+	a.Equal(list.Find(20), elem2)
 
 	assertSanity(a, list)
 
@@ -71,9 +71,9 @@ func TestBasicCRUD(t *testing.T) {
 	a.Equal(list.Back(), elem2)
 	a.Equal(elem4.Next(), elem1)
 	a.Equal(elem4.Prev(), nil)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(0), elem4)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(15), elem3)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(20), elem2)
+	a.Equal(list.Find(0), elem4)
+	a.Equal(list.Find(15), elem3)
+	a.Equal(list.Find(20), elem2)
 
 	assertSanity(a, list)
 
@@ -88,9 +88,15 @@ func TestBasicCRUD(t *testing.T) {
 	a.Equal(list.Back(), elem2)
 	a.Equal(elem5.Next(), elem2)
 	a.Equal(elem5.Prev(), elem1)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(15), elem5)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(16.78), elem5)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(16.79), elem2)
+	a.Equal(list.Find(15), elem5)
+	a.Equal(list.Find(16.78), elem5)
+	a.Equal(list.Find(16.79), elem2)
+	a.Equal(list.FindNext(nil, 15), elem5)
+	a.Equal(list.FindNext(nil, 16.78), elem5)
+	a.Equal(list.FindNext(nil, 16.79), elem2)
+	a.Equal(list.FindNext(elem1, 15), elem5)
+	a.Equal(list.FindNext(elem5, 15), elem5)
+	a.Equal(list.FindNext(elem5, 30), nil)
 
 	min1_2 := func(a, b int) int {
 		if a < b {
@@ -130,10 +136,10 @@ func TestBasicCRUD(t *testing.T) {
 	a.Equal(list.Len(), 3)
 	a.Equal(list.Front(), elem4)
 	a.Equal(list.Back(), elem5)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(-99), elem4)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(10), elem1)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(15), elem3)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(20), nil)
+	a.Equal(list.Find(-99), elem4)
+	a.Equal(list.Find(10), elem1)
+	a.Equal(list.Find(15), elem3)
+	a.Equal(list.Find(20), nil)
 
 	assertSanity(a, list)
 
@@ -142,14 +148,17 @@ func TestBasicCRUD(t *testing.T) {
 	a.Equal(list.Len(), 2)
 	a.Equal(list.Front(), elem1)
 	a.Equal(list.Back(), elem5)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(-99), elem1)
+	a.Equal(list.Find(-99), elem1)
 
 	back := list.RemoveBack()
 	a.Assert(back == elem5)
 	a.Equal(list.Len(), 1)
 	a.Equal(list.Front(), elem1)
 	a.Equal(list.Back(), elem1)
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(15), nil)
+	a.Equal(list.Find(15), nil)
+	a.Equal(list.FindNext(nil, 10), elem1)
+	a.Equal(list.FindNext(elem1, 10), elem1)
+	a.Equal(list.FindNext(nil, 15), nil)
 
 	assertSanity(a, list)
 
@@ -197,11 +206,15 @@ func TestCustomComparable(t *testing.T) {
 
 	a.Equal(list.Front(), list.Get(k2))
 	a.Equal(list.Back(), list.Get(k3))
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(k1), list.Get(k1))
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(k2), list.Get(k2))
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(k3), list.Get(k3))
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(&testCustomComparable{High: 0, Low: 0}), list.Get(k2))
-	a.Equal(list.FindFirstElementGreaterOrEqualToKey(&testCustomComparable{High: 99, Low: 99}), nil)
+	a.Equal(list.Find(k1), list.Get(k1))
+	a.Equal(list.Find(k2), list.Get(k2))
+	a.Equal(list.Find(k3), list.Get(k3))
+	a.Equal(list.Find(&testCustomComparable{High: 0, Low: 0}), list.Get(k2))
+	a.Equal(list.Find(&testCustomComparable{High: 99, Low: 99}), nil)
+	a.Equal(list.FindNext(nil, k1), list.Get(k1))
+	a.Equal(list.FindNext(list.Get(k2), k1), list.Get(k1))
+	a.Equal(list.FindNext(list.Get(k3), k1), list.Get(k3))
+	a.Equal(list.FindNext(list.Get(k3), &testCustomComparable{High: 99, Low: 99}), nil)
 
 	// Reset list to a new one.
 	list = New(Reverse(comparable))
@@ -317,7 +330,7 @@ func ExampleSkipList() {
 	fmt.Println(val, ok) // Output: 56  true
 
 	// Find first elements with score greater or equal to key
-	foundElem := list.FindFirstElementGreaterOrEqualToKey(30)
+	foundElem := list.Find(30)
 	fmt.Println(foundElem.Key(), foundElem.Value) // Output: 34 56
 
 	// Remove an element for key.
