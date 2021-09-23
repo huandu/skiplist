@@ -453,14 +453,10 @@ func (list *SkipList) SetMaxLevel(level int) (old int) {
 }
 
 func (list *SkipList) randLevel() int {
-	if list.maxLevel <= 1 {
-		return 1
-	}
-
 	estimated := list.maxLevel
 	const prob = 1 << 30 // Half of 2^31.
 	rand := list.rand
-	i := 0
+	i := 1
 
 	for ; i < estimated; i++ {
 		if rand.Int31() < prob {
@@ -468,7 +464,7 @@ func (list *SkipList) randLevel() int {
 		}
 	}
 
-	return i + 1
+	return i
 }
 
 // compare compares value of two elements and returns -1, 0 and 1.
