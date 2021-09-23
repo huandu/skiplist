@@ -253,10 +253,17 @@ func BenchmarkRandomSelect(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		keys = append(keys, i)
-		list.Set(i, i)
 	}
 
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	rnd.Shuffle(b.N, func(i, j int) {
+		keys[i], keys[j] = keys[j], keys[i]
+	})
+
+	for i := 0; i < b.N; i++ {
+		list.Set(keys[i], i)
+	}
+
 	rnd.Shuffle(b.N, func(i, j int) {
 		keys[i], keys[j] = keys[j], keys[i]
 	})

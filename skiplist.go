@@ -34,8 +34,6 @@ package skiplist
 
 import (
 	"fmt"
-	"math"
-	"math/bits"
 	"math/rand"
 	"time"
 )
@@ -459,25 +457,18 @@ func (list *SkipList) randLevel() int {
 		return 1
 	}
 
-	// Use log_2(list.length) * 4 as estimated max level.
-	estimated := bits.Len(uint(list.length)) * 4
+	estimated := list.maxLevel
+	const prob = 1 << 30 // Half of 2^31.
+	rand := list.rand
+	i := 0
 
-	if estimated > list.maxLevel {
-		estimated = list.maxLevel
-	}
-
-	// prob should be a bit more than 1/2 chance to make level balanced.
-	// This value is selected by some random Get tests on a random generated list.
-	// The magic number 3/8 works best when list size < 10,000,000.
-	const prob = math.MaxInt32 * 3 / 8
-
-	for i := 1; i < estimated; i++ {
-		if list.rand.Int31() < prob {
-			return i
+	for ; i < estimated; i++ {
+		if rand.Int31() < prob {
+			break
 		}
 	}
 
-	return list.maxLevel - 1
+	return i + 1
 }
 
 // compare compares value of two elements and returns -1, 0 and 1.
