@@ -236,30 +236,37 @@ func (list *SkipList) Set(key, value interface{}) (elem *Element) {
 	return
 }
 
-// Get returns an element with the key.
-// If the key is not found, returns nil.
-//
-// The complexity is O(log(N)).
-func (list *SkipList) Get(key interface{}) (elem *Element) {
+func (list *SkipList) findNext(start *Element, score float64, key interface{}) (elem *Element) {
 	if list.length == 0 {
 		return
 	}
 
-	score := list.calcScore(key)
-
-	if score < list.Front().score || score > list.Back().score {
+	if start == nil && list.compare(score, key, list.Front()) <= 0 {
+		elem = list.Front()
+		return
+	}
+	if start != nil && list.compare(score, key, start) <= 0 {
+		elem = start
+		return
+	}
+	if list.compare(score, key, list.Back()) > 0 {
 		return
 	}
 
-	prevHeader := &list.elementHeader
-	i := len(list.levels) - 1
+	var prevHeader *elementHeader
+	if start == nil {
+		prevHeader = &list.elementHeader
+	} else {
+		prevHeader = &start.elementHeader
+	}
+	i := len(prevHeader.levels) - 1
 
 	// Find out previous elements on every possible levels.
 	for i >= 0 {
 		for next := prevHeader.levels[i]; next != nil; next = prevHeader.levels[i] {
 			if comp := list.compare(score, key, next); comp <= 0 {
+				elem = next
 				if comp == 0 {
-					elem = next
 					return
 				}
 
@@ -276,6 +283,44 @@ func (list *SkipList) Get(key interface{}) (elem *Element) {
 		}
 	}
 
+	return
+}
+
+// FindNext returns the first element after start that is greater or equal to key.
+// If start is greater or equal to key, returns start.
+// If there is no such element, returns nil.
+// If start is nil, find element from front.
+//
+// The complexity is O(log(N)).
+func (list *SkipList) FindNext(start *Element, key interface{}) (elem *Element) {
+	return list.findNext(start, list.calcScore(key), key)
+}
+
+// Find returns the first element that is greater or equal to key.
+// It's short hand for FindNext(nil, key).
+//
+// The complexity is O(log(N)).
+func (list *SkipList) Find(key interface{}) (elem *Element) {
+	return list.FindNext(nil, key)
+}
+
+// Get returns an element with the key.
+// If the key is not found, returns nil.
+//
+// The complexity is O(log(N)).
+func (list *SkipList) Get(key interface{}) (elem *Element) {
+	score := list.calcScore(key)
+
+	firstElem := list.findNext(nil, score, key)
+	if firstElem == nil {
+		return
+	}
+
+	if list.compare(score, key, firstElem) != 0 {
+		return
+	}
+
+	elem = firstElem
 	return
 }
 
