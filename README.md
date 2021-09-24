@@ -55,6 +55,10 @@ func main() {
     val, ok := list.GetValue(34)
     fmt.Println(val, ok) // Output: 56  true
 
+    // Find first elements with score greater or equal to key
+    foundElem := list.Find(30)
+    fmt.Println(foundElem.Key(), foundElem.Value) // Output: 34 56
+
     // Remove an element for key.
     list.Remove(34)
 }
