@@ -26,10 +26,9 @@ jobs:
       - name: Test
         run: go test -v -coverprofile=covprofile.cov ./...
 
-      - name: Install goveralls
-        run: go get github.com/mattn/goveralls
-
       - name: Send coverage
         env:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: goveralls -coverprofile=covprofile.cov -service=github
+        run: |
+          go get github.com/mattn/goveralls
+          go run github.com/mattn/goveralls -coverprofile=covprofile.cov -service=github
